@@ -280,17 +280,20 @@ class DigestAuth(Auth):
 
         qop = self._resolve_qop(challenge.qop, request=request)
         if qop is None:
-            digest_data = [HA1, challenge.nonce, HA2]
+            # RFC 2069 backwards-compatible mode: no qop, nc or cnonce is
+            # present in the challenge, so the request-digest uses only
+            # H(A1), nonce and H(A2). HA1 is included exactly once here.
+            key_digest = b":".join((HA1, challenge.nonce, HA2))
         else:
-            digest_data = [challenge.nonce, nc_value, cnonce, qop, HA2]
-        key_digest = b":".join(digest_data)
+            digest_data = [HA1, challenge.nonce, nc_value, cnonce, qop, HA2]
+            key_digest = b":".join(digest_data)
 
         format_args = {
             "username": self._username,
             "realm": challenge.realm,
             "nonce": challenge.nonce,
             "uri": path,
-            "response": digest(b":".join((HA1, key_digest))),
+            "response": digest(key_digest),
             "algorithm": challenge.algorithm.encode(),
         }
         if challenge.opaque:
