@@ -280,17 +280,20 @@ class DigestAuth(Auth):
 
         qop = self._resolve_qop(challenge.qop, request=request)
         if qop is None:
+            # RFC 2069, section 2.1.2: the response digest
+            # is computed as `H(HA1:nonce:HA2)`.
             digest_data = [HA1, challenge.nonce, HA2]
         else:
-            digest_data = [challenge.nonce, nc_value, cnonce, qop, HA2]
-        key_digest = b":".join(digest_data)
+            # RFC 7616, section 3.4.1: with a 'qop' the response digest
+            # is computed as `H(HA1:nonce:nc:cnonce:qop:HA2)`.
+            digest_data = [HA1, challenge.nonce, nc_value, cnonce, qop, HA2]
 
         format_args = {
             "username": self._username,
             "realm": challenge.realm,
             "nonce": challenge.nonce,
             "uri": path,
-            "response": digest(b":".join((HA1, key_digest))),
+            "response": digest(b":".join(digest_data)),
             "algorithm": challenge.algorithm.encode(),
         }
         if challenge.opaque:
